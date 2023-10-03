@@ -90,7 +90,9 @@ def main():
                 pre_processed_landmark_list = pre_process_landmark(
                     landmark_list)
 
-                hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
+                hand_sign_id, probs = keypoint_classifier(pre_processed_landmark_list)
+
+                debug_image = draw_prob_visual(probs[0], keypoint_classifier_labels, debug_image)
 
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
@@ -250,6 +252,15 @@ def draw_past_letters(image, sign, res):
 
     return image, sign
 
+
+def draw_prob_visual(res, labels, input_frame):
+    colors = [(105, 221, 255), (216, 225, 255), (190, 146, 162)]
+    output_frame = input_frame.copy()
+    for num, prob in enumerate(res):
+        cv2.rectangle(output_frame, (0, 60 + num * 40), (int(prob * 100), 90 + num * 40), colors[num], -1)
+        cv2.putText(output_frame, labels[num], (0, 85 + num * 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+    return output_frame
 
 if __name__ == '__main__':
     main()

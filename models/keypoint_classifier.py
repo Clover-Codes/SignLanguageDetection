@@ -33,4 +33,4 @@ class KeyPointClassifier(object):
 
         result_index = np.argmax(np.squeeze(result))
 
-        return result_index
+        return result_index, result
