@@ -3,6 +3,7 @@ import copy
 import argparse
 import itertools
 
+import cv2
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
@@ -16,6 +17,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 
 def main():
     # Argument parsing #################################################################
+    letters = []
     args = get_args()
 
     cap_device = args.device
@@ -105,6 +107,12 @@ def main():
                     brect,
                     handedness,
                     keypoint_classifier_labels[hand_sign_id],
+                )
+
+                debug_image, letters = draw_past_letters(
+                    debug_image,
+                    letters,
+                    keypoint_classifier_labels[hand_sign_id]
                 )
 
         debug_image = draw_info(debug_image, fps)
@@ -224,6 +232,23 @@ def draw_info(image, fps):
                1.0, (255, 255, 255), 2, cv.LINE_AA)
 
     return image
+
+
+def draw_past_letters(image, sign, res):
+    if len(sign) > 0:
+        if res != sign[-1]:
+            sign.append(res)
+    else:
+        sign.append(res)
+
+    if len(sign) > 18:
+        sign = sign[-18:]
+
+    cv2.rectangle(image, (0, 440), (640, 480), (245, 117, 16), -1)
+
+    cv2.putText(image, ' '.join(sign), (3, 470), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+    return image, sign
 
 
 if __name__ == '__main__':
