@@ -3,6 +3,7 @@ import copy
 import argparse
 import itertools
 
+import cv2
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
@@ -44,6 +45,7 @@ def main():
     cvFpsCalc = CvFpsCalc(buffer_len=10)
 
     mode = 0
+    count = 0
 
     while True:
         fps = cvFpsCalc.get()
@@ -58,6 +60,7 @@ def main():
         ret, image = cap.read()
         if not ret:
             break
+
         image = cv.flip(image, 1)  # Mirror display
         debug_image = copy.deepcopy(image)
 
@@ -81,7 +84,7 @@ def main():
                 pre_processed_landmark_list = pre_process_landmark(
                     landmark_list)
                 # Write to the dataset file
-                logging_csv(number, mode, pre_processed_landmark_list)
+                count = logging_csv(number, mode, pre_processed_landmark_list, count)
 
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, bounding_rect)
@@ -93,7 +96,7 @@ def main():
                     mp_drawing_styles.get_default_hand_landmarks_style(),
                     mp_drawing_styles.get_default_hand_connections_style())
 
-        debug_image = draw_info(debug_image, fps, mode, number)
+        debug_image = draw_info(debug_image, fps, mode, number, count)
 
         # Screen reflection #############################################################
         cv.imshow('Image Collection for Dataset', debug_image)
@@ -130,15 +133,16 @@ def select_mode(key, mode):
     return number, mode
 
 
-def logging_csv(number, mode, landmark_list):
+def logging_csv(number, mode, landmark_list, count):
     if mode == 0:
-        pass
+        return count
     if mode == 1 and (0 <= number <= 25):
         csv_path = 'dataset/keypoint.csv'
         with open(csv_path, 'a', newline="") as f:
             writer = csv.writer(f)
             writer.writerow([number, *landmark_list])
-    return
+        return count + 1
+    return count
 
 
 def draw_bounding_rect(use_brect, image, brect):
@@ -211,7 +215,7 @@ def pre_process_landmark(landmark_list):
     return temp_landmark_list
 
 
-def draw_info(image, fps, mode, number):
+def draw_info(image, fps, mode, number, count):
     cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
                1.0, (0, 0, 0), 4, cv.LINE_AA)
     cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
@@ -226,6 +230,8 @@ def draw_info(image, fps, mode, number):
             cv.putText(image, "NUM:" + str(number), (10, 110),
                        cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1,
                        cv.LINE_AA)
+
+    cv2.putText(image, str(count), (10, 440), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4, cv.LINE_AA)
     return image
 
 
