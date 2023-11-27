@@ -43,6 +43,7 @@ def main():
     )
 
     keypoint_classifier = KeyPointClassifier()
+    num_classes = 1
 
     # Read labels ###########################################################
     with open('dataset/keypoint_classifier_label.csv',
@@ -51,6 +52,7 @@ def main():
         keypoint_classifier_labels = [
             row[0] for row in keypoint_classifier_labels
         ]
+        num_classes = len(keypoint_classifier_labels)
 
     # FPS Measurement ########################################################
     cvFpsCalc = CvFpsCalc(buffer_len=10)
@@ -92,7 +94,7 @@ def main():
 
                 hand_sign_id, probs = keypoint_classifier(pre_processed_landmark_list)
 
-                debug_image = draw_prob_visual(probs[0], keypoint_classifier_labels, debug_image)
+                debug_image = draw_prob_visual(probs[0], keypoint_classifier_labels, debug_image, cap_width, num_classes)
 
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
@@ -160,7 +162,6 @@ def calc_bounding_rect(image, landmarks):
     x, y, w, h = cv.boundingRect(landmark_array)
 
     return [x, y, x + w, y + h]
-
 
 def calc_landmark_list(image, landmarks):
     image_width, image_height = image.shape[1], image.shape[0]
@@ -246,21 +247,23 @@ def draw_past_letters(image, sign, res):
     if len(sign) > 18:
         sign = sign[-18:]
 
-    cv2.rectangle(image, (0, 440), (640, 480), (245, 117, 16), -1)
+    cv2.rectangle(image, (0, 440), (640, 480), (50, 31, 40), -1)
 
     cv2.putText(image, ' '.join(sign), (3, 470), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     return image, sign
 
 
-def draw_prob_visual(res, labels, input_frame):
-    colors = [(105, 221, 255), (216, 225, 255), (190, 146, 162)]
+def draw_prob_visual(res, labels, input_frame, frame_width, num_class):
+    print("hey")
+    colors = [(165, 64, 70), (210, 83, 68)]
     output_frame = input_frame.copy()
     for num, prob in enumerate(res):
-        cv2.rectangle(output_frame, (0, 60 + num * 40), (int(prob * 100), 90 + num * 40), colors[num], -1)
-        cv2.putText(output_frame, labels[num], (0, 85 + num * 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.rectangle(output_frame, (8 + 24 * num, 440 - (int(prob * 100))), (8 + 24 * (num + 1), 440), colors[num % 2], -1)
+        cv2.putText(output_frame, labels[num][0], (24 * num + 10, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     return output_frame
+
 
 if __name__ == '__main__':
     main()
