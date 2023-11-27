@@ -8,7 +8,6 @@ import cv2 as cv
 import numpy as np
 import mediapipe as mp
 
-from utils import CvFpsCalc
 from models import KeyPointClassifier
 
 mp_drawing = mp.solutions.drawing_utils
@@ -16,34 +15,24 @@ mp_drawing_styles = mp.solutions.drawing_styles
 
 
 def main():
-    # Argument parsing #################################################################
     letters = []
-    args = get_args()
-
-    cap_device = args.device
-    cap_width = args.width
-    cap_height = args.height
-
-    use_static_image_mode = args.use_static_image_mode
-    min_detection_confidence = args.min_detection_confidence
 
     use_brect = True
 
     # Camera preparation ###############################################################
-    cap = cv.VideoCapture(cap_device)
-    cap.set(cv.CAP_PROP_FRAME_WIDTH, cap_width)
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, cap_height)
+    cap = cv.VideoCapture(0)
+    cap.set(cv.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
 
     # Model load #############################################################
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
-        static_image_mode=use_static_image_mode,
+        static_image_mode=True,
         max_num_hands=1,
-        min_detection_confidence=min_detection_confidence,
+        min_detection_confidence=0.7,
     )
 
     keypoint_classifier = KeyPointClassifier()
-    num_classes = 1
 
     # Read labels ###########################################################
     with open('dataset/keypoint_classifier_label.csv',
@@ -52,13 +41,8 @@ def main():
         keypoint_classifier_labels = [
             row[0] for row in keypoint_classifier_labels
         ]
-        num_classes = len(keypoint_classifier_labels)
-
-    # FPS Measurement ########################################################
-    cvFpsCalc = CvFpsCalc(buffer_len=10)
 
     while True:
-        fps = cvFpsCalc.get()
 
         # Process Key (ESC: end) #################################################
         key = cv.waitKey(10)
@@ -94,7 +78,7 @@ def main():
 
                 hand_sign_id, probs = keypoint_classifier(pre_processed_landmark_list)
 
-                debug_image = draw_prob_visual(probs[0], keypoint_classifier_labels, debug_image, cap_width, num_classes)
+                debug_image = draw_prob_visual(probs[0], keypoint_classifier_labels, debug_image)
 
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
@@ -119,31 +103,11 @@ def main():
                     keypoint_classifier_labels[hand_sign_id]
                 )
 
-        debug_image = draw_info(debug_image, fps)
-
         # Screen reflection #############################################################
         cv.imshow('Sign Language Alphabet Recognition', debug_image)
 
     cap.release()
     cv.destroyAllWindows()
-
-
-def get_args():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--width", help='cap width', type=int, default=640)
-    parser.add_argument("--height", help='cap height', type=int, default=480)
-
-    parser.add_argument('--use_static_image_mode', action='store_true')
-    parser.add_argument("--min_detection_confidence",
-                        help='min_detection_confidence',
-                        type=float,
-                        default=0.7)
-
-    args = parser.parse_args()
-
-    return args
 
 
 def calc_bounding_rect(image, landmarks):
@@ -162,6 +126,7 @@ def calc_bounding_rect(image, landmarks):
     x, y, w, h = cv.boundingRect(landmark_array)
 
     return [x, y, x + w, y + h]
+
 
 def calc_landmark_list(image, landmarks):
     image_width, image_height = image.shape[1], image.shape[0]
@@ -228,15 +193,6 @@ def draw_info_text(image, brect, handedness, hand_sign_text):
     return image
 
 
-def draw_info(image, fps):
-    cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
-               1.0, (0, 0, 0), 4, cv.LINE_AA)
-    cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
-               1.0, (255, 255, 255), 2, cv.LINE_AA)
-
-    return image
-
-
 def draw_past_letters(image, sign, res):
     if len(sign) > 0:
         if res != sign[-1]:
@@ -254,8 +210,7 @@ def draw_past_letters(image, sign, res):
     return image, sign
 
 
-def draw_prob_visual(res, labels, input_frame, frame_width, num_class):
-    print("hey")
+def draw_prob_visual(res, labels, input_frame):
     colors = [(165, 64, 70), (210, 83, 68)]
     output_frame = input_frame.copy()
     for num, prob in enumerate(res):
