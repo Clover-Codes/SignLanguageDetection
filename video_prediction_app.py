@@ -1,6 +1,5 @@
 import csv
 import copy
-import argparse
 import itertools
 
 import cv2
@@ -16,6 +15,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 
 def main():
     letters = []
+    last_freq = 0
 
     use_brect = True
 
@@ -76,8 +76,10 @@ def main():
                 pre_processed_landmark_list = pre_process_landmark(
                     landmark_list)
 
+                # Prediction from the Model
                 hand_sign_id, probs = keypoint_classifier(pre_processed_landmark_list)
 
+                # Drawing histogram of prediction confidences
                 debug_image = draw_prob_visual(probs[0], keypoint_classifier_labels, debug_image)
 
                 # Drawing part
@@ -97,11 +99,23 @@ def main():
                     keypoint_classifier_labels[hand_sign_id],
                 )
 
-                debug_image, letters = draw_past_letters(
-                    debug_image,
+                # Updating prediction count of last predicted sign
+                if len(letters) == 0:
+                    last_freq = 1
+                elif keypoint_classifier_labels[hand_sign_id] == letters[-1]:
+                    last_freq = 0
+                else:
+                    last_freq = last_freq + 1
+
+                letters = update_past_letters(
                     letters,
-                    keypoint_classifier_labels[hand_sign_id]
+                    keypoint_classifier_labels[hand_sign_id],
+                    last_freq
                 )
+
+        # draw the past predictions
+        cv2.rectangle(debug_image, (0, 440), (640, 480), (50, 31, 40), -1)
+        cv2.putText(debug_image, ' '.join(letters), (10, 470), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
         # Screen reflection #############################################################
         cv.imshow('Sign Language Alphabet Recognition', debug_image)
@@ -193,21 +207,14 @@ def draw_info_text(image, brect, handedness, hand_sign_text):
     return image
 
 
-def draw_past_letters(image, sign, res):
-    if len(sign) > 0:
-        if res != sign[-1]:
-            sign.append(res)
-    else:
-        sign.append(res)
+def update_past_letters(letters, res, last_freq):
+    if len(letters) == 0 or last_freq > 10:
+        letters.append(res)
 
-    if len(sign) > 18:
-        sign = sign[-18:]
+    if len(letters) > 18:
+        letters = letters[-18:]
 
-    cv2.rectangle(image, (0, 440), (640, 480), (50, 31, 40), -1)
-
-    cv2.putText(image, ' '.join(sign), (3, 470), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
-    return image, sign
+    return letters
 
 
 def draw_prob_visual(res, labels, input_frame):
@@ -215,7 +222,7 @@ def draw_prob_visual(res, labels, input_frame):
     output_frame = input_frame.copy()
     for num, prob in enumerate(res):
         cv2.rectangle(output_frame, (8 + 24 * num, 440 - (int(prob * 100))), (8 + 24 * (num + 1), 440), colors[num % 2], -1)
-        cv2.putText(output_frame, labels[num][0], (24 * num + 10, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(output_frame, labels[num][0], (24 * num + 10, 420), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     return output_frame
 
